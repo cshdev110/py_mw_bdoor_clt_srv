@@ -7,7 +7,9 @@ import socket
 import json
 import base64
 import curses
-import subprocess
+# import numpy as np
+import time
+# import subprocess
 # import keyboard
 
 class Listr:
@@ -68,6 +70,8 @@ class Listr:
             return base64.b64encode(f.read()).decode()
 
     def run(self, cole):
+        
+        #curses.nocbreak()
         wd_ = ''
         col = 1
         row = 1
@@ -75,58 +79,60 @@ class Listr:
         buff_com = ['']
         hist = ''
         (coley, colex) = cole.getmaxyx()
+        nm_hist = []
         cli_w = curses.newwin(coley, colex - 3)
         cli_w.scrollok(True)
         cli_w.idlok(True)
         cli_w.keypad(True)
-        cli_w.border()
         while True:
             try:
                 
                 if cole.getmaxyx()[0] != coley or cole.getmaxyx()[1] != colex:
                     (coley, colex) = self.resize_cli_w(cole, cli_w)
                 
-                cli_w.clear()
-                cli_w.border()
+                #cli_w.clear()
                 
                 cli_w.addstr(1, 1, hist)
-                cli_w.addstr(row, 1, str(self.addrs) + "$ " + buff_ch)
+                cli_w.addstr(row, 1, 'lenHist: ' + str(len(nm_hist)) + " :: " + str(self.addrs) + "$ " + buff_ch)
 
                 cli_w.refresh()
 
                 inp_ch = cli_w.getch()
+                cli_w.addstr(0,20,"testing... 2: " + str(inp_ch))
+                time.sleep(1)
+
                 if inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
                     self.app_k__(cli_w, inp_ch, hist)
                 elif inp_ch == curses.KEY_ENTER:
+                    # Managing the output history
                     hist += str(self.addrs) + "$ " + buff_ch + "\n"
-                    buff_com[:0] = [buff_ch]
+                    buff_com[:0] = [buff_ch] # buff_com is the history commands, which will be scrolled.
+                    
                     if cli_w.getyx()[0] + 1 < cli_w.getmaxyx()[0]:
                         row = cli_w.getyx()[0] + 1
+
+                    cli_w.addstr(0,0,"testing...")
                     buff_ch = ''
+                    c_, r_ = 0
+                    temp_arr = []
+                    print("1")
+                    # for x in range(len(hist)):
+                    #     print("2")
+                    #     if x % (colex - 3) == 0:
+                    #         print("3")
+                    #         nm_hist.append(temp_arr)
+                    #         temp_arr = []
+                    #     temp_arr.append(hist[x])
+                    # cli_w.refresh()
+                    # time.sleep(10.1)
+                        
+
                 elif inp_ch == curses.KEY_BACKSPACE:
                     buff_ch = buff_ch[:-1]
                 elif inp_ch < 127 and inp_ch > 31:
                     buff_ch = buff_ch + chr(inp_ch)
                 else:
                     pass
-                # print(cli_w.getmaxyx()[0])
-                # print(row)
-                # cole.refresh()
-                # cli_w.refresh()
-                
-                
-                # while True:
-                    
-                    # cole.getch()
-
-
-                    # print(type(self.addrs))
-                    # print(str(self.addrs))
-                    # exit()
-                    # word[0] += str(self.input_())
-                    # print(str(word[0]), end="", flush=True)
-                    # if self.check_ctls(word):
-                    #     word[0] = ''
 
 #                self.comm = input(f"({self.addrs}) $ ").split(" ")
 #                # Here, the file is appended to the file.
@@ -153,7 +159,6 @@ class Listr:
     
     def app_k__(self, cli_w, inp_ch, hist):
         sc_ = 0
-        print("enter")
         while inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
             cli_w.clear()
             if inp_ch == curses.KEY_UP:
@@ -168,7 +173,7 @@ class Listr:
     
     def resize_cli_w(self, cole, cli_w):
         (coley, colex) = cole.getmaxyx()
-        cli_w.resize(coley, colex)
+        cli_w.resize(coley, colex - 3)
         cole.clear()
         cole.refresh()
         return (coley, colex)

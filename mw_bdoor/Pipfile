@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 pynput = "*"
 keyboard = "*"
+numpy = "*"
 
 [dev-packages]
 
