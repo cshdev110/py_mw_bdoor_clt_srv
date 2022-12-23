@@ -73,6 +73,7 @@ class Listr:
 
 
     def run(self, cole):
+        scrl_comm__ = -1 # To scroll commands sent
         right_left = 0 # Index to go through the string that is typed (buff_ch)
         hist = ""
         buff_ch = ""
@@ -110,9 +111,22 @@ class Listr:
                     cli_p.clear()
                     cli_p.addstr(self.cli_pad_y - coley, 0, hist)
 
+                elif inp_ch == curses.KEY_UP:
+                    # -2 because the index of an array start with 0, and the first item in the array is empty '' that's why -1
+                    if scrl_comm__ < len(buff_com) - 1 and len(buff_com) > 1:
+                        if scrl_comm__ < len(buff_com) - 2 : scrl_comm__ += 1
+                        buff_ch = buff_com[scrl_comm__]
+                        cur_yx__[1] = len(str(self.addrs) + '$ ') + len(buff_ch)
+
+                elif inp_ch == curses.KEY_DOWN:
+                    if scrl_comm__ > -1:
+                        if scrl_comm__ > 0: scrl_comm__ -= 1
+                        buff_ch = buff_com[scrl_comm__]
+                        cur_yx__[1] = len(str(self.addrs) + '$ ') + len(buff_ch)
+                
                 # Handling the scroll
                 elif inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
-                    self.app_k__(cli_p, self.cli_pad_y - coley, inp_ch, coley, colex)
+                    inp_ch = self.app_k__(cli_p, self.cli_pad_y - coley, inp_ch, coley, colex)
                     continue
                 
                 # Handling left and right arrows keys to go through the string that is typed (buff_ch)
@@ -131,14 +145,20 @@ class Listr:
 
                 # Handlig history and command execution
                 elif inp_ch == curses.KEY_ENTER:
-                    # Managing the output history
+                    # Managing the output history and clear up the cli
                     buff_com[:0] = [buff_ch] # buff_com is the history commands, which will be scrolled.
-                    output_comm__ = '\n' + self.s_comm__(buff_ch).replace('\r', '')
-                    hist += '\n' + str(self.addrs) + "$ " + buff_ch
-                    hist += output_comm__
-                    cli_p.addstr(cli_p.getyx()[0] + 1, 0, output_comm__ + '\n' + str(self.addrs) + "$ ")
-                    (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
+                    if buff_ch == 'clear': # To celar the screen
+                        cli_p.clear()
+                        cli_p.addstr(self.cli_pad_y - coley, 0, str(self.addrs) + "$ ")
+                        (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
+                    else: # To execute command and create the story
+                        output_comm__ = '\n\n' + self.s_comm__(buff_ch).replace('\r', '')
+                        hist += '\n' + str(self.addrs) + "$ " + buff_ch
+                        hist += output_comm__
+                        cli_p.addstr(cli_p.getyx()[0], cur_yx__[1], output_comm__ + '\n' + str(self.addrs) + "$ ")
+                        (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
                     buff_ch = ''
+                    scrl_comm__ = 0
                     right_left = 0 # Restart the cursor's index
                     continue
 
@@ -170,7 +190,6 @@ class Listr:
                 
         except curses.error as cur_err:
             print(cur_err)
-            pass
 
     
     def s_comm__(self, comm):
@@ -213,6 +232,7 @@ class Listr:
             input_ = cli_p.getch()
             if input_ != curses.KEY_UP and input_ != curses.KEY_DOWN:
                 break
+        return input_
     
 
     # def rwl_ku__(self):
@@ -233,6 +253,8 @@ class Listr:
     #         #keyboard.write("\b\b")
     #         print('\r', end=" ")
             
-
-my_listner = Listr('', 4444)
-my_listner.main_curses()
+try:
+    my_listner = Listr('', 4444)
+    my_listner.main_curses()
+except Exception as ex:
+    print(ex)
