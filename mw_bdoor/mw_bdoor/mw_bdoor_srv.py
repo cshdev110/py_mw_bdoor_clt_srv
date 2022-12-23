@@ -73,64 +73,104 @@ class Listr:
 
 
     def run(self, cole):
-        #curses.nocbreak()
+        right_left = 0 # Index to go through the string that is typed (buff_ch)
+        hist = ""
         buff_ch = ""
-        str_to__ = ""
-        buff_com = ['']
+        output_comm__ = ""
+        buff_com = [''] # History commands
+        cur_yx__ = [0, 0] # Store the cursor's position
         (coley, colex) = cole.getmaxyx()
         cli_p = curses.newpad(self.cli_pad_y, colex - 3)
         cli_p.scrollok(True)
         cli_p.idlok(True)
         cli_p.keypad(True)
-        cli_p.border()
         try:
             cli_p.clear()
-            cli_p.addstr(self.cli_pad_y - coley, cli_p.getyx()[1], str(self.addrs) + "$ ")
+            cli_p.addstr(self.cli_pad_y - coley, 0, str(self.addrs) + "$ " + buff_ch)
+            (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
 
             while True:
-
+                
                 cli_p.refresh(self.cli_pad_y - coley, 0, 0, 0, coley - 1, colex - 3)
 
                 #Capturing the input
                 # The main 'enter' key retrieve 10, whereas the another 'enter' key 343 which
                 # is the value that's working. (??)
+                # Using get_wch make use of capturing a wide form of charater, that includs the special ones.
                 inp_ch = (lambda input: curses.KEY_ENTER if input == 10 or input == '\n' else input)(cli_p.get_wch())
                 
                 # Checking if the size of the windows changed
                 (coley_c, colex_c) = cole.getmaxyx()
                 if coley_c != coley or colex_c != colex:
                     (coley, colex) = (coley_c, colex_c)
-                    cli_p.addstr("testing... rezising")
+                    # cli_p.addstr("testing... rezising")
                     cli_p.resize(self.cli_pad_y, colex - 3)
                     cole.clear()
                     cole.refresh()
+                    cli_p.clear()
+                    cli_p.addstr(self.cli_pad_y - coley, 0, hist)
 
                 # Handling the scroll
                 elif inp_ch == curses.KEY_UP or inp_ch == curses.KEY_DOWN:
                     self.app_k__(cli_p, self.cli_pad_y - coley, inp_ch, coley, colex)
+                    continue
+                
+                # Handling left and right arrows keys to go through the string that is typed (buff_ch)
+                elif inp_ch == curses.KEY_LEFT:
+                    if right_left > -len(buff_ch):
+                        right_left -= 1
+                        cli_p.move(cli_p.getyx()[0], cli_p.getyx()[1] - 1)
+                        (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
+                    continue
+                elif inp_ch == curses.KEY_RIGHT:
+                    if right_left < 0:
+                        right_left += 1
+                        cli_p.move(cli_p.getyx()[0], cli_p.getyx()[1] + 1)
+                        (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
+                    continue
 
-                # Handlig history and executing
+                # Handlig history and command execution
                 elif inp_ch == curses.KEY_ENTER:
                     # Managing the output history
                     buff_com[:0] = [buff_ch] # buff_com is the history commands, which will be scrolled.
-                    str_to__ = '\n' + self.s_comm__(buff_ch).replace('\r', '') + '\n' + str(self.addrs) + "$ "
-
+                    output_comm__ = '\n' + self.s_comm__(buff_ch).replace('\r', '')
+                    hist += '\n' + str(self.addrs) + "$ " + buff_ch
+                    hist += output_comm__
+                    cli_p.addstr(cli_p.getyx()[0] + 1, 0, output_comm__ + '\n' + str(self.addrs) + "$ ")
+                    (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
                     buff_ch = ''
+                    right_left = 0 # Restart the cursor's index
+                    continue
 
                 elif inp_ch == curses.KEY_BACKSPACE:
-                    if buff_ch != '':
-                        cli_p.delch(cli_p.getyx()[0], cli_p.getyx()[1] - 1)
-                    buff_ch = buff_ch[:-1]
+                    if cur_yx__[1] > len(str(self.addrs) + "$ "):
+                        if right_left < 0 and right_left > -len(buff_ch):
+                            # Remove a character. checking first if the cursor's index (right_left) has been modify and is not as less as buff_ch
+                            # The for loop with the parameters given is working between the length of buff_ch to -1. 
+                            # It is given 0 into ranege, however the loop just reach until -1.
+                            buff_ch = ''.join([buff_ch[i] for i in range(-len(buff_ch), 0) if i != right_left - 1])
+                        elif len(buff_ch) > 0:
+                            # If the (right_left) cursor's index equal c 0 so means hasn't been modified.
+                            buff_ch = buff_ch[:-1]
+                        cur_yx__[1] -= 1 # By every backspace the cursor goes back one position
+                # Receiving normal char
+                # Make sure the inputs are not special characters.
                 elif type(inp_ch) is str and len(inp_ch) == 1:
+                    # Make sure the new chars are character between 127 to 31 in ASCII table.
                     if ord(inp_ch) < 127 and ord(inp_ch) > 31:
-                        buff_ch += inp_ch
-                        str_to__ = inp_ch
-                
-                cli_p.addstr(cli_p.getyx()[0], cli_p.getyx()[1], str_to__)
-                str_to__ = ''
+                        if len(buff_ch) > 0 and right_left < 0:
+                            buff_ch = buff_ch[:right_left] + inp_ch + buff_ch[right_left:]
+                        else:
+                            buff_ch += inp_ch
+                        cur_yx__[1] += 1 # By every new char the cursor goes forward one position
+
+                cli_p.deleteln()
+                cli_p.addstr(cli_p.getyx()[0], 0, str(self.addrs) + "$ " + buff_ch)
+                cli_p.move(cur_yx__[0], cur_yx__[1]) # Sending the cursor onto its current position
                 
         except curses.error as cur_err:
             print(cur_err)
+            pass
 
     
     def s_comm__(self, comm):
@@ -175,23 +215,23 @@ class Listr:
                 break
     
 
-    def rwl_ku__(self):
-        if self.idx < len(self.lt_comm_):
-            print(*self.lt_comm_[self.idx]), print("\b\b\b\b"),
-            #keyboard.write("\b\b\b\b\b\b\b\b" + ' '.join(self.lt_comm_[self.idx]), delay=0.0)
-            #print(' '.join(self.lt_comm_[self.idx]) + " up-> " + str(self.idx) + " - len: " + str(len(self.lt_comm_)))
-            self.idx = self.idx + 1
+    # def rwl_ku__(self):
+    #     if self.idx < len(self.lt_comm_):
+    #         print(*self.lt_comm_[self.idx]), print("\b\b\b\b"),
+    #         #keyboard.write("\b\b\b\b\b\b\b\b" + ' '.join(self.lt_comm_[self.idx]), delay=0.0)
+    #         #print(' '.join(self.lt_comm_[self.idx]) + " up-> " + str(self.idx) + " - len: " + str(len(self.lt_comm_)))
+    #         self.idx = self.idx + 1
     
 
-    def rwl_kd__(self):
-        if self.idx > 0:
-            self.idx = self.idx - 1
-            print(' '.join(self.lt_comm_[self.idx]), end=" ")
-            # keyboard.write("\b" + ' '.join(self.lt_comm_[self.idx]))
-            #print(self.lt_comm_[self.idx] + " down-> " + str(self.idx) + " - len: " + str(len(self.lt_comm_)))
-        elif self.idx == 0:
-            #keyboard.write("\b\b")
-            print('\r', end=" ")
+    # def rwl_kd__(self):
+    #     if self.idx > 0:
+    #         self.idx = self.idx - 1
+    #         print(' '.join(self.lt_comm_[self.idx]), end=" ")
+    #         # keyboard.write("\b" + ' '.join(self.lt_comm_[self.idx]))
+    #         #print(self.lt_comm_[self.idx] + " down-> " + str(self.idx) + " - len: " + str(len(self.lt_comm_)))
+    #     elif self.idx == 0:
+    #         #keyboard.write("\b\b")
+    #         print('\r', end=" ")
             
 
 my_listner = Listr('', 4444)
