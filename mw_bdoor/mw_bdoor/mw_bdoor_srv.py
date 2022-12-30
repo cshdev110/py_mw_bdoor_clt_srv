@@ -9,6 +9,8 @@ import json
 import base64
 import curses
 import time
+import threading
+
 class Listr:
 
     comm = ""
@@ -59,7 +61,7 @@ class Listr:
     def w_f(self, path, item):
         with open(path, "wb") as f:
             f.write(base64.b64decode(item))
-            return "\nDownloaded"
+            return "Downloaded\n"
     
 
     def r_f(self, path):
@@ -212,8 +214,9 @@ class Listr:
                         cli_p.addstr(padUppL_row, padUppL_col, str(self.addrs) + "$ ")
                         (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
                     else: # To execute command and create the story
-                        output_comm__ = '\n\n' + self.s_comm__(buff_ch).replace('\r', '')
+                        output_comm__ = '\n\n' + str(self.s_comm__(buff_ch)).replace('\r', '')
                         stor += '\n' + str(self.addrs) + "$ " + buff_ch + output_comm__
+                        cur_yx__[1] = len(str(self.addrs) + "$ ") + len(buff_ch) # Positioning the cursor back after the previews command
                         cli_p.addstr(cli_p.getyx()[0], cur_yx__[1], output_comm__ + '\n' + str(self.addrs) + "$ ")
                         (cur_yx__[0], cur_yx__[1]) = cli_p.getyx() # updating cursor's position
 
@@ -238,9 +241,9 @@ class Listr:
                         cur_yx__[1] -= 1 # By every backspace the cursor goes back one position
                 # DELETE
                 elif inp_ch == curses.KEY_DC:
-                    if cur_yx__[1] > len(str(self.addrs) + "$ "):
+                    if cur_yx__[1] > (len(str(self.addrs) + "$ ") - 1) and len(buff_ch) > 0:
                         # Remove a character. First, checking if the cursor's index (right_left) has been modify and is not as less as the length of -buff_ch
-                        if right_left < 0 and right_left > -len(buff_ch):
+                        if right_left < 0:
                             # The for loop with the parameters given is working between the "minus" length of buff_ch to -1. 
                             # It is given 0 into range, however the loop just reach until -1.
                             buff_ch = ''.join([buff_ch[i] for i in range(-len(buff_ch), 0) if i != right_left])
@@ -259,7 +262,7 @@ class Listr:
                     cli_p.deleteln()
                     cli_p.addstr(cli_p.getyx()[0], padUppL_col, str(self.addrs) + "$ " + buff_ch)
                 
-        except curses.error:
+        except (curses.error, Exception):
             # Making sure the nodelay is turn false
             cli_p.nodelay(False)
             cli_p.clear()
@@ -280,12 +283,18 @@ class Listr:
 
 
     def s_comm__(self, comm):
+        wait_dwnl_eve = threading.Event()
+        wait_dwnl = threading.Thread(target=self.wait_dwnl__, args=(wait_dwnl_eve,))
         try:
             self.comm = comm.split(" ")
             # Here, the file is appended to the file.
             if self.comm[0] == "upload":
                 self.comm.append(self.r_f(self.comm[1]))
+            if self.comm[0] == "download":
+                wait_dwnl.start()
             result = self.exe_rmy(self.comm)
+            wait_dwnl_eve.set()
+            time.sleep(0.5)
             # while is to make sure if there is still connection
             while result == None:
                 result = self.exe_rmy(self.comm)
@@ -295,12 +304,22 @@ class Listr:
                 self.send_data("test...")
             return result
         except FileNotFoundError as notfound:
-            print(f"\n{notfound.strerror}\n")
+            # print(f"\n\r{notfound.strerror}\n")
+            return notfound.strerror
         except (BrokenPipeError, ConnectionError) as cnerr:
-            print(cnerr.strerror + " - Connection down")
+            # print(cnerr.strerror + " - Connection down")
             self.conn.close()
-            exit()
+            raise Exception(cnerr.strerror + " - Connection down")
+    
 
+    # Waiting
+    def wait_dwnl__(self, eve):
+        print("\n\rDownloading...", end='  ')
+        while not eve.is_set():
+            for ch in ['- ', '\\ ', '| ', '/ ', '=S']:
+                print('\b\b' + ch, end='', flush=True)
+                time.sleep(0.3)
+                if eve.is_set(): break
 
     # scrolling
     def app_k__(self, cli_p, row, input_, y_bottom, x_bottom):
