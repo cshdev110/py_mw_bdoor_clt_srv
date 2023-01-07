@@ -48,7 +48,7 @@ class Listr:
         json_data = ""
         while True:
             try:
-                json_data += self.conn.recv(1024).decode() # plus sign is necessary.
+                json_data += self.conn.recv(1024*8).decode() # plus sign is necessary.
                 if json_data == "" or json_data == b'':
                     break
                 return json.loads(json_data)
